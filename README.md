@@ -16,5 +16,5 @@ Besides this big abstract interest, I do have concrete hobbies:
 
 That's it about me. Thanks for visiting my page!!! 
 
-Format: ![The End](https://data.whicdn.com/images/93250231/large.jpg)
+![The End](https://data.whicdn.com/images/93250231/large.jpg)
 
