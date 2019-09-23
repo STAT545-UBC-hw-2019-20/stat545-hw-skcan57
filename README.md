@@ -12,7 +12,7 @@ Besides this big abstract interest, I do have concrete hobbies:
 - [ ] eat Ramen
 - [ ] food travel
 - [ ] read about interior design
-- [ ] thinking about the abstracts... 
+- [ ] think about the abstracts... 
 
 That's it about me. Thanks for visiting my page!!! 
 
