@@ -1,0 +1,108 @@
+---
+title: "Exploring Gapminder Dataset (HW2 - STAT 545)"
+author: "Phuong (Sam) Can"
+date: "24/09/2019"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    keep_md: yes
+    toc: yes
+  toc_float: yes
+---
+
+Let's tackle each question in the assignment:
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(gapminder)
+str(gapminder)
+attach(gapminder)
+```
+
+1.1 & 1.2. We have the output as below:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+# 1.1 & 1.2
+gapminder %>%
+  filter(country == sample(country, 3) & year > 1969 & year < 1980) %>%
+  select(country, gdpPercap)
+```
+
+1.3. We have the output as below:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+# 1.3
+gapminder %>% 
+  group_by(country) %>% 
+  summarise(lifeExp_increase = (diff(lifeExp, lag = 11) > 0)) %>% 
+  filter(lifeExp_increase == TRUE)
+```
+
+1.4. We have the output as below:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+# 1.4
+gapminder %>% 
+  group_by(country) %>% 
+  summarise(max_gdpPercap = max(gdpPercap))
+```
+
+1.5. We have the output as below:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+# 1.5
+ggplot(gapminder, aes(x=lifeExp, y=gdpPercap)) + geom_point() + scale_x_log10(lifeExp)
+```
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+options("scipen"=100, "digits"=4)
+```
+
+2. I selected two variables for exploration: *continent* (categorical) and *pop* (quantitative)
+- *continent* has ``r nlevels(continent)`` levels, which are: ``r levels(continent)``.
+- *pop* has a mean of ``r mean(pop)``, median of ``r median(pop)``, ranging from ``r min(pop)`` to ``r max(pop)``, and has a standard deviation of ``r sd(pop)``. Here is a histogram to describe the distribution of the world population in the dataset.
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+hist(pop)
+```
+
+Here is a boxplot to describe the relationship between these two variables, where you can see the median, quantiles, and ranges of values for population in each continent.
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+ggplot(gapminder, aes(x=continent, y=pop)) + geom_boxplot() + scale_y_log10()
+```
+
+3. Explore various plot types:
+a. A scatterplot with two quantitative variables: *lifeExp* and *gdpPercap.*
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+ggplot(gapminder, aes(lifeExp, gdpPercap)) + geom_point(alpha = 0.15) + theme_bw() 
+```
+
+b. A bar graph with one quantitative and one categorical variable: 
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+ggplot(gapminder, aes(continent, pop)) + geom_col()
+```
+
+Extra 1. We have the output as below:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+filter(gapminder, country == c("Rwanda", "Afghanistan"))
+```
+
+They did succeed, because they included the dataset (in the first argument) and correct syntax for the second argument, which involves double equal signs "==" and a vector that contains selected countries' names.
+
+Extra 2. We have the output as below:
+
+```{r warning=FALSE, message=FALSE, echo=TRUE}
+knitr::kable(head(gapminder, 10))
+DT::datatable(gapminder)
+```
+
+
+
+
+
