@@ -1,0 +1,133 @@
+---
+title: "Exploring Gapminder Dataset (HW3 - STAT 545)"
+author: "Phuong (Sam) Can"
+date: "12/09/2019"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  pdf_document:
+    keep_md: yes
+    toc: yes
+  toc_float: yes
+---
+
+Let's first load the `gapminder` dataset.
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tsibble)
+library(gapminder)
+gapminder
+```
+
+Then, let us look at the nuanced stories that the dataset `gapminder` entails.
+
+\newpage
+
+
+## GDP per Capita
+
+First, the dataset offers insights into how the GDP per capita changed within each country and each continent overtime. We will look at five regression lines in which `gdpPercap` is regressed on `year` to see the overall trend of change in GDP per capita for each continent from 1952 to 2007.
+
+```{r}
+ggplot(gapminder, aes(x=year, y=gdpPercap, color = continent)) + 
+  geom_smooth(method='lm',formula=y~x, size = 0.5) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  labs(title="GDP per Capita across Continents (from 1952 to 2007)", x="Year", y="GDP per Capita")
+```
+
+As we can see in the graph, Oceania had the steepest increase in GDP per capita among the continents from 1952 to 2007, followed by Europe, Asia, Americas, and lastly, Africa. Specifically, on average, GDP per capita in Oceania increased by `r attach(gapminder)` `r options("scipen"=100, "digits"=4)` `r round(mean(gdpPercap[continent == "Oceania" & year == 2007]) - mean(gdpPercap[continent == "Oceania" & year == 1952]), 2)` over the time period, while there was only a slight increase of `r round(mean(gdpPercap[continent == "Africa" & year == 2007]) - mean(gdpPercap[continent == "Africa" & year == 1952]), 2)` in GDP per capita in Africa. This varying increases can be attributable to the differing industrialization periods in each continent.
+
+```{r}
+ggplot(gapminder, aes(x=year, y=gdpPercap, color = continent)) + 
+  geom_jitter(alpha = 0.15) + 
+  geom_smooth(method='lm',formula=y~x, size = 0.5) +
+  facet_wrap(~ continent) +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+  labs(title="GDP per Capita in each Continent (from 1952 to 2007)", x="Year", y="GDP per Capita")
+```
+
+We can examine the increase per continent by faceting data into individual continents. This scatterplot with jittering also informs us about how spread the data are within each continent.
+
+```{r}
+ggplot(gapminder, aes(x=year, y=gdpPercap, color = continent)) + 
+  geom_jitter(alpha = 0.15) + 
+  geom_smooth(method='lm',formula=y~x, size = 0.5) +
+  facet_wrap(~ continent, scales = "free_y") +
+  theme_bw() +
+  theme(panel.grid = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+  labs(title="GDP per Capita across Continents (from 1952 to 2007)", x="Year", y="GDP per Capita")
+```
+
+When we put the data for each continent in free scales, or let the limits for GDP per capita vary across individual continents' graphs, we can examine more closely the overall increase for each continent within each continent's own range of GDP per capita data.
+
+\newpage
+
+## Life Expectancy
+
+Let's look at what continent has the biggest increase in life expectancy overtime.
+
+```{r}
+gap_inc <- gapminder %>% 
+  group_by(country) %>% 
+  mutate(lifeExp_inc = diff(lifeExp, lag = 11)) %>% 
+  group_by(continent) %>% 
+  mutate(n_countries = n_distinct(country)) %>% 
+  mutate(lifeExp_inc = mean(lifeExp_inc))
+
+ggplot(gap_inc, aes(continent, lifeExp_inc)) +
+  geom_bar(stat = "sum") + 
+  scale_fill_grey() + 
+  theme(legend.position = "none", panel.grid = element_blank()) +
+  theme_bw() +
+  labs(title="Increase in Life Expectancy across Continents (from 1952 to 2007)", x="Continent", y="Increase in Life Expectancy")
+```
+
+```{r, echo = FALSE}
+gap_cont <- gap_inc %>% 
+  distinct(continent)
+gap_lifeExp <- gap_inc %>% 
+  distinct(lifeExp_inc)
+```
+
+Asia had the biggest jump in life expectancy, followed by Americas, Africa, Europe, and Oceania. Specifically, life expectancy in Asia increased by `r attach(gap_lifeExp)` `r round(lifeExp_inc[continent == "Asia"], 2)` years, while life expectancy in Oceania, the continent where living standards and life expectancy were already high, only increased by `r round(lifeExp_inc[continent == "Oceania"], 2)` years.
+
+\newpage
+
+
+## The Story behind China
+
+From 1952 to 2007, China has gone through historical events that directly affected many of its social outcomes such as life expectancy and GDP per capita. Let's look at them more closely.
+
+Social variables' data in China are presented below:
+
+```{r}
+gap_china <- gapminder %>% 
+  filter(country == "China")
+gap_china
+```
+
+```{r}
+ggplot(gap_china, aes(year, lifeExp)) +
+  geom_line() +
+  labs(title="Life Expectancy in China (from 1952 to 2007)", x="Year", y="Life Expectancy") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+Life expectancy in China didn't simply follow a monotonic increase. In fact, there was a sharp plunge near 1958-1963, right when the Chinese government launched the five-year economic plan "Great Leap Forward" that caused economic breakdown and millions of deaths for starvation. However, life expectancy quickly rose afterwards thanks to progressive economic policies and improvement in living standards.
+
+```{r}
+ggplot(gap_china, aes(year, gdpPercap)) + 
+  geom_line() + 
+  labs(title="GDP per Capita in China (from 1952 to 2007)", x="Year", y="GDP per Capita") +
+  theme_bw() +
+  theme(panel.grid.minor = element_blank())
+```
+
+China obviously experienced a huge spike in GDP per capita throughout the last 50 years! From a low-income country with `r attach(gapminder)` `r round(gdpPercap[country == "China" & year == 1952], 2)` GDP per capita, it became an upper-middle-income economy with `r round(gdpPercap[country == "China" & year == 2007], 2)` GDP per capita. This spike happened thanks to the *Open-door policy* that opened the country to foreign investment, market economy, and thriving private sector.
+
