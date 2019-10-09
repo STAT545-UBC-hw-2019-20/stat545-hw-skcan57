@@ -1,0 +1,302 @@
+---
+title: "Exploring Datasets (HW4 - STAT 545)"
+author: "Phuong (Sam) Can"
+date: "08/10/2019"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+  pdf_document:
+    keep_md: yes
+    toc: yes
+  toc_float: yes
+---
+
+## Univariate Data Reshaping
+
+Let's first load the `gapminder` dataset.
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tsibble)
+library(gapminder)
+attach(gapminder)
+gapminder
+```
+
+\newpage
+
+Simply by examining three variables in this dataset, `continent`, `year`, and `lifeExp`, we can answer many questions, including:
+
+1. What is the minimum, maximum, mean, median life expectancy in the world within each year from 1952 to 2007?
+
+To answer this question, we will create a new tibble called `gap_lifeExp_world` that displays these numbers and plot them in a line graph as following:
+
+```{r}
+gap_lifeExp_world <- gapminder %>% 
+  group_by(year) %>% 
+  mutate(min_lifeExp = min(lifeExp)) %>% 
+  mutate(max_lifeExp = max(lifeExp)) %>% 
+  mutate(mean_lifeExp = mean(lifeExp)) %>% 
+  mutate(med_lifeExp = median(lifeExp)) %>% 
+  select(-c(continent, country, pop, gdpPercap))
+
+ggplot(gap_lifeExp_world, aes(year, med_lifeExp)) + 
+  geom_line() + 
+  labs(title="Median Life Expectancy Change (from 1952 to 2007)", x="Year", y="Median Life Expectancy") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank())
+```
+
+\newpage
+
+2. What is the minimum, maximum, mean, median life expectancy within each year within each continent from 1952 to 2007?
+
+To answer this question, we will create a new table called `gap_lifeExp_continent_year` that showcases these statistics and plot them in a line graph as following:
+
+```{r}
+gap_lifeExp_continent_year <- gapminder %>% 
+  group_by(year, continent) %>% 
+  mutate(min_lifeExp = min(lifeExp[continent == continent])) %>% 
+  mutate(max_lifeExp = max(lifeExp[continent == continent])) %>% 
+  mutate(mean_lifeExp = mean(lifeExp[continent == continent])) %>% 
+  mutate(med_lifeExp = median(lifeExp[continent == continent])) %>% 
+  select(-c(country, pop, gdpPercap))
+
+ggplot(gap_lifeExp_continent_year, aes(year, med_lifeExp, color = continent)) + 
+  geom_line() +
+  labs(title="Median Life Expectancy Change within each Continent (from 1952 to 2007)", x="Year", y="Median Life Expectancy") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank())
+```
+
+\newpage
+
+3. What is the increase in life expectancy (maximum minus minimum) within each continent throughout the years from 1952 to 2007?
+
+We will again create a new tibble called `gap_lifeExp_continent_through` with all relevant statistics, then plot them in a bar graph to show the magnitude of the change that each continent has made in life expectancy throughout the years.
+
+```{r}
+gap_lifeExp_continent_through <- gapminder %>% 
+  group_by(country) %>% 
+  mutate(lifeExp_inc = diff(lifeExp, lag = 11)) %>% 
+  group_by(continent) %>% 
+  mutate(n_countries = n_distinct(country)) %>% 
+  mutate(lifeExp_inc = mean(lifeExp_inc))
+
+ggplot(gap_lifeExp_continent_through, aes(continent, lifeExp_inc)) +
+  geom_bar(stat = "sum") + 
+  scale_fill_grey() + 
+  theme(legend.position = "none", panel.grid = element_blank()) +
+  theme_minimal() +
+  labs(title="Increase in Life Expectancy across Continents (from 1952 to 2007)", x="Continent", y="Increase in Life Expectancy")
+```
+
+
+\newpage
+
+We can also try to make a sub-dataset of gapminder wider to see if we can make plots easier that way. Let's take the `gap_lifeExp_continent_year` tibble that we created before and select only the median life expectancy within each continent.
+
+```{r}
+gap_lifeExp_continent_year
+gap_lifeExp_continent_year <- 
+  gap_lifeExp_continent_year %>% 
+  distinct(continent, year, med_lifeExp)
+(gap_lifeExp_continent_year <- 
+  gap_lifeExp_continent_year %>% 
+  pivot_wider(id_cols = year,
+              names_from = continent,
+              values_from = med_lifeExp))
+```
+
+Let's try plotting this tibble. We will graph life expectancy in 2007 across continents.
+
+```{r allows error, echo = FALSE}
+knitr::opts_chunk$set(error = TRUE)
+gap_lifeExp_continent_year <- 
+  gap_lifeExp_continent_year %>% 
+  filter(year == 2007)
+gap_lifeExp_continent_year
+# ggplot(gap_lifeExp_continent_year, aes(Asia:Oceania)) + 
+#  geom_bar()
+```
+
+Running the commented codes above would give errors when we try to put multiple columns that represent `continent` in the `x` argument, and their values in the `y` argument for ggplot aesthetics. In fact, there is no way to knit such a plot if we keep using a wide tibble. 
+
+Solution: re-lengthening the tibble as following.
+
+
+```{r}
+(gap_lifeExp_continent_year %>% 
+  pivot_longer(cols = -year,
+               names_to = "continent",
+               values_to = "med_lifeExp"))
+```
+
+\newpage
+
+## Multivariate Data Reshaping
+
+Now, let's look at four variables: `continent`, `year`, `lifeExp`, and `gdpPercap` and tackle some questions related to them.
+
+1. What is the minimum, maximum, mean, median life expectancy and GDP per capita in the world within each year from 1952 to 2007?
+
+To answer this question, we will create a new tibble called `gap_lifeExp_gdp_world` that displays these numbers and plot the relationship between the median life expectancy and median GDP per capita in a scatterplot (with a regression line) as following:
+
+```{r}
+gap_lifeExp_gdp_world <- gapminder %>% 
+  group_by(year) %>% 
+  mutate(min_lifeExp = min(lifeExp)) %>% 
+  mutate(min_gdpPercap = min(gdpPercap)) %>% 
+  mutate(max_lifeExp = max(lifeExp)) %>% 
+  mutate(max_gdpPercap = max(gdpPercap)) %>%
+  mutate(mean_lifeExp = mean(lifeExp)) %>% 
+  mutate(mean_gdpPercap = mean(gdpPercap)) %>%
+  mutate(med_lifeExp = median(lifeExp)) %>%
+  mutate(med_gdpPercap = median(gdpPercap)) %>% 
+  select(-c(continent, country, pop))
+
+ggplot(gap_lifeExp_gdp_world, aes(med_gdpPercap, med_lifeExp)) + 
+  geom_point() + 
+  geom_smooth(method='lm',formula=y~x, size = 0.5) +
+  labs(title="Life Expectancy Versus GDP Per Capita (from 1952 to 2007)", x="GDP Per Capita", y="Median Life Expectancy") +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank())
+```
+
+\newpage
+
+2. What is the minimum, maximum, mean, median life expectancy and GDP per capita within each year within each continent from 1952 to 2007?
+
+To answer this question, we will create a new table called `gap_lifeExp_gdp_continent_year` that showcases these statistics and plot them in a line graph as following:
+
+```{r}
+gap_lifeExp_gdp_continent_year <- gapminder %>% 
+  group_by(year, continent) %>% 
+  mutate(min_lifeExp = min(lifeExp[continent == continent])) %>%
+  mutate(min_gdpPercap = min(gdpPercap[continent == continent])) %>%
+  mutate(max_lifeExp = max(lifeExp[continent == continent])) %>%
+  mutate(max_gdpPercap = max(gdpPercap[continent == continent])) %>%
+  mutate(mean_lifeExp = mean(lifeExp[continent == continent])) %>% 
+  mutate(mean_gdpPercap = mean(gdpPercap[continent == continent])) %>% 
+  mutate(med_lifeExp = median(lifeExp[continent == continent])) %>% 
+  mutate(med_gdpPercap = median(gdpPercap[continent == continent])) %>%
+  select(-c(country, pop))
+
+ggplot(gap_lifeExp_gdp_continent_year, aes(med_gdpPercap, med_lifeExp, color = continent)) + 
+  geom_point() +
+  geom_smooth(method='lm',formula=y~x, size = 0.5) +
+  labs(title="Life Expectancy Versus GDP Per Capita within each Continent (from 1952 to 2007)", x="GDP Per Capita", y="Median Life Expectancy") +
+  theme_minimal() +
+  scale_x_log10() +
+  theme(panel.grid.minor = element_blank())
+```
+
+\newpage
+
+3. What is the increase in life expectancy (maximum minus minimum) within each continent throughout the years from 1952 to 2007?
+
+We will again create a new tibble called `gap_lifeExp_gdp_continent_through` with all relevant statistics, then plot the increase in life expectancy versus increase in GDP per capita across continents, with size scales based on the increase in GDP per capita each continent has.
+
+```{r}
+gap_lifeExp_gdp_continent_through <- gapminder %>% 
+  group_by(country) %>% 
+  mutate(lifeExp_inc = diff(lifeExp, lag = 11)) %>% 
+  mutate(gdp_inc = diff(gdpPercap, lag = 11)) %>% 
+  group_by(continent) %>% 
+  mutate(n_countries = n_distinct(country)) %>% 
+  mutate(lifeExp_inc = mean(lifeExp_inc)) %>% 
+  mutate(gdp_inc = mean(gdp_inc))
+
+ggplot(gap_lifeExp_gdp_continent_through, aes(gdp_inc, lifeExp_inc, color = continent)) +
+  geom_point(aes(size = gdp_inc)) +
+  theme_minimal() +
+  labs(title="Increase in Life Expectancy Versus Increase in GDP Per Capita across Continents", x="Increase in GDP Per Capita", y="Increase in Life Expectancy")
+```
+
+\newpage
+
+Again, we can make another subset of gapminder wider to see if we can make plots easier that way. Let's take the `gap_lifeExp_gdp_continent_year` tibble that we created before and select only the median life expectancy and median GDP per capita within each continent.
+
+```{r}
+gap_lifeExp_gdp_continent_year
+gap_lifeExp_gdp_continent_year <- 
+  gap_lifeExp_gdp_continent_year %>% 
+  distinct(continent, year, med_lifeExp, med_gdpPercap)
+gap_lifeExp_gdp_continent_year
+(gap_lifeExp_gdp_continent_year <- 
+  gap_lifeExp_gdp_continent_year %>% 
+  pivot_wider(id_cols = year,
+              names_from = continent,
+              names_sep = "-",
+              values_from = c(med_lifeExp, med_gdpPercap)))
+```
+
+Let's try plotting this tibble. We will graph life expectancy versus GDP per capita in 2007 across continents.
+
+```{r}
+knitr::opts_chunk$set(error = TRUE)
+gap_lifeExp_gdp_continent_year07 <- 
+  gap_lifeExp_gdp_continent_year %>% 
+  filter(year == 2007)
+# ggplot(gap_lifeExp_continent_year07,  aes(med_lifeExp-Asia:med_lifeExp-Oceania, med_gdpPercap-Asia:med_gdpPercap-Oceania)) + 
+#  geom_point()
+```
+
+Running the commented codes above would give errors when we try to put multiple cells in each of the `x` and `y` arguments for ggplot aesthetics. In fact, there is no way to knit such a plot if we keep using a wide tibble. 
+
+Solution: re-lengthening the tibble as following.
+
+
+```{r}
+gap_lifeExp_gdp_continent_year <-
+  gap_lifeExp_gdp_continent_year %>% 
+  pivot_longer(cols = -year,
+               names_to = c("med", "continent"),
+               names_sep = "-",
+               values_to = c("value"))
+(gap_lifeExp_gdp_continent_year %>% 
+  pivot_wider(id_cols = c(year, continent),
+               names_from = c("med"),
+               values_from = c("value")))
+```
+
+\newpage
+
+## Table Joins
+
+```{r, message=FALSE, warning=FALSE}
+guest <- read_csv("https://raw.githubusercontent.com/STAT545-UBC/Classroom/master/data/wedding/attend.csv")
+email <- read_csv("https://raw.githubusercontent.com/STAT545-UBC/Classroom/master/data/wedding/emails.csv")
+```
+
+1. To add emails for participants in `guest`, we first have to separate the names in `email`, then left join with `guest` by `name` variable.
+
+```{r}
+email <- email %>% 
+  separate_rows(guest, sep = ",")
+(guest <- guest %>% 
+  rename(guest = name) %>% 
+  left_join(email, by = "guest"))
+```
+
+2. To find out the ones we have emails for but are not on the guestlist, we can have `guest` anti join with the previously left-joined `email` dataset by `email` variable.
+
+```{r}
+(email %>% 
+  anti_join(guest, by = "email"))
+```
+
+3. To include everyone we have emails for, we full join the left-joined guestlist with the original `email` dataset by `email` variable.
+
+```{r}
+(guest %>% 
+  full_join(email, by = "email"))
+```
+
+
+
+
+
+
